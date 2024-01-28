@@ -1,10 +1,16 @@
-import { dracoInitialize, createGraphicsDevice, WebglGraphicsDevice } from 'playcanvas';
+import { dracoInitialize, createGraphicsDevice, WebglGraphicsDevice, XRTYPE_VR, XRSPACE_LOCAL } from 'playcanvas';
 import { Scene } from './scene';
 import { getSceneConfig } from './scene-config';
 import { CreateDropHandler } from './drop-handler';
 import { initMaterials } from './material';
 import { EditorUI } from './ui/editor';
 import { registerEvents } from './editor-ops';
+import {
+  LookingGlassWebXRPolyfill,
+  LookingGlassConfig,
+} from "../static/lib/lkg-webxr.module.js";
+
+new LookingGlassWebXRPolyfill();
 
 declare global {
     interface Window {
@@ -106,6 +112,8 @@ const main = async () => {
         editorUI.canvas,
         graphicsDevice
     );
+    // scene.app.xr._deviceAvailabilityCheck();
+    addVrButton(scene);
 
     registerEvents(scene, editorUI, remoteStorageDetails);
 
@@ -122,6 +130,49 @@ const main = async () => {
     }
 
     window.scene = scene;
+}
+
+function addVrButton(scene: Scene) {
+    const vrButton = document.createElement('button');
+    function stylizeElement(element) {
+
+        element.style.position = 'absolute';
+        element.style.right = '0';
+        element.style.bottom = '20px';
+        element.style.padding = '12px 6px';
+        element.style.border = '1px solid #fff';
+        element.style.borderRadius = '4px';
+        element.style.background = 'rgba(0,0,0,0.1)';
+        element.style.color = '#fff';
+        element.style.font = 'normal 13px sans-serif';
+        element.style.textAlign = 'center';
+        element.style.opacity = '0.5';
+        element.style.outline = 'none';
+        element.style.zIndex = '999';
+        element.textContent = "Looking Glass";
+
+    }
+    vrButton.id = "VRButton"; // the webxr.mjs will try finding this id for a limit of time. but without webxr.mjs modify the button, the code above seems good enough to trigger the Looking glass feature
+    document.body.appendChild(vrButton);
+
+    stylizeElement(vrButton);
+
+    vrButton.addEventListener("click", (ev) => {
+        if (scene.app.xr.active) {
+            scene.camera.entity.camera.endXr();
+        } else {
+            let canvas = scene.app.graphicsDevice.canvas;
+            const gl = canvas.getContext('webgl2');
+            gl.makeXRCompatible();
+            scene.camera.entity.camera.startXr(XRTYPE_VR, XRSPACE_LOCAL, {
+                callback: function (err) {
+                    if (err) {
+                        console.log(err);
+                    }
+                }
+            });
+        }
+    })
 }
 
 export { main };
